@@ -16,6 +16,35 @@ namespace crudaplikasi
         private void ManajemenProdukToko_Load(object sender, EventArgs e)
         {
             TampilkanData();
+            LoadAutoCompleteNamaBarang(); // 🔽 Tambahan untuk Autocomplete
+        }
+
+        private void LoadAutoCompleteNamaBarang()
+        {
+            try
+            {
+                using (MySqlConnection conn = Koneksi.GetConnection())
+                {
+                    conn.Open();
+                    string query = "SELECT DISTINCT nama FROM produk";
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    MySqlDataReader reader = cmd.ExecuteReader();
+
+                    AutoCompleteStringCollection autoCollection = new AutoCompleteStringCollection();
+                    while (reader.Read())
+                    {
+                        autoCollection.Add(reader.GetString("nama"));
+                    }
+
+                    txtNama.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                    txtNama.AutoCompleteSource = AutoCompleteSource.CustomSource;
+                    txtNama.AutoCompleteCustomSource = autoCollection;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal memuat data autocomplete: " + ex.Message);
+            }
         }
 
         private void TampilkanData()
@@ -65,11 +94,14 @@ namespace crudaplikasi
                     cmd.Parameters.AddWithValue("@nama", txtNama.Text);
                     cmd.Parameters.AddWithValue("@kuantitas", harga);
                     cmd.ExecuteNonQuery();
+
+                    SimpanLog("Tambah", txtID.Text, txtNama.Text, harga);
                 }
 
                 MessageBox.Show("Data berhasil ditambahkan!");
                 TampilkanData();
                 ResetForm();
+                LoadAutoCompleteNamaBarang(); // refresh autocomplete
             }
             catch (Exception ex)
             {
@@ -102,11 +134,14 @@ namespace crudaplikasi
                     cmd.Parameters.AddWithValue("@nama", txtNama.Text);
                     cmd.Parameters.AddWithValue("@kuantitas", harga);
                     cmd.ExecuteNonQuery();
+
+                    SimpanLog("Ubah", txtID.Text, txtNama.Text, harga);
                 }
 
                 MessageBox.Show("Data berhasil diubah!");
                 TampilkanData();
                 ResetForm();
+                LoadAutoCompleteNamaBarang(); // refresh autocomplete
             }
             catch (Exception ex)
             {
@@ -130,15 +165,22 @@ namespace crudaplikasi
                 using (MySqlConnection conn = Koneksi.GetConnection())
                 {
                     conn.Open();
+
+                    string namaProduk = txtNama.Text;
+                    decimal.TryParse(txtKuantitas.Text, out decimal qty);
+
                     string query = "DELETE FROM produk WHERE id=@id";
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@id", txtID.Text);
                     cmd.ExecuteNonQuery();
+
+                    SimpanLog("Hapus", txtID.Text, namaProduk, qty);
                 }
 
                 MessageBox.Show("Data berhasil dihapus!");
                 TampilkanData();
                 ResetForm();
+                LoadAutoCompleteNamaBarang(); // refresh autocomplete
             }
             catch (Exception ex)
             {
@@ -168,6 +210,33 @@ namespace crudaplikasi
                 txtNama.Text = row.Cells["nama"].Value?.ToString();
                 txtKuantitas.Text = row.Cells["kuantitas"].Value?.ToString();
             }
+        }
+
+        private void SimpanLog(string aksi, string idProduk, string namaProduk, decimal kuantitas)
+        {
+            try
+            {
+                using (MySqlConnection conn = Koneksi.GetConnection())
+                {
+                    conn.Open();
+                    string query = "INSERT INTO log_aktivitas (aksi, id_produk, nama_produk, kuantitas) VALUES (@aksi, @id, @nama, @kuantitas)";
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@aksi", aksi);
+                    cmd.Parameters.AddWithValue("@id", idProduk);
+                    cmd.Parameters.AddWithValue("@nama", namaProduk);
+                    cmd.Parameters.AddWithValue("@kuantitas", kuantitas);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal menyimpan log: " + ex.Message);
+            }
+        }
+
+        private void label4_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
