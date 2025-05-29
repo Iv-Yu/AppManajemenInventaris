@@ -7,22 +7,27 @@ namespace crudaplikasi
 {
     public partial class ManajemenInventaris : Form
     {
+        private AutoCompleteStringCollection autoCollection = new AutoCompleteStringCollection();
+
         public ManajemenInventaris()
         {
             InitializeComponent();
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            this.Load += ManajemenInventaris_Load;
         }
 
-        private void ManajemenProdukToko_Load(object sender, EventArgs e)
+        private void ManajemenInventaris_Load(object sender, EventArgs e)
         {
+            LoadAutoCompleteNamaBarang();
             TampilkanData();
-            LoadAutoCompleteNamaBarang(); // 🔽 Tambahan untuk Autocomplete
+            TampilkanLogPengambilan();
         }
 
         private void LoadAutoCompleteNamaBarang()
         {
             try
             {
+                autoCollection.Clear();
                 using (MySqlConnection conn = Koneksi.GetConnection())
                 {
                     conn.Open();
@@ -30,7 +35,6 @@ namespace crudaplikasi
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     MySqlDataReader reader = cmd.ExecuteReader();
 
-                    AutoCompleteStringCollection autoCollection = new AutoCompleteStringCollection();
                     while (reader.Read())
                     {
                         autoCollection.Add(reader.GetString("nama"));
@@ -39,6 +43,10 @@ namespace crudaplikasi
                     txtNama.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
                     txtNama.AutoCompleteSource = AutoCompleteSource.CustomSource;
                     txtNama.AutoCompleteCustomSource = autoCollection;
+
+                    txtNamaBarang.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                    txtNamaBarang.AutoCompleteSource = AutoCompleteSource.CustomSource;
+                    txtNamaBarang.AutoCompleteCustomSource = autoCollection;
                 }
             }
             catch (Exception ex)
@@ -67,6 +75,34 @@ namespace crudaplikasi
             }
         }
 
+        private void TampilkanLogPengambilan()
+        {
+            try
+            {
+                using (MySqlConnection conn = Koneksi.GetConnection())
+                {
+                    conn.Open();
+                    string query = @"SELECT 
+                        p.id_pengambilan,
+                        pr.nama AS nama_barang,
+                        p.pengambil,
+                        p.jumlah,
+                        p.tanggal_ambil
+                    FROM pengambilan p
+                    JOIN produk pr ON p.id_produk = pr.id
+                    ORDER BY p.tanggal_ambil DESC";
+                    MySqlDataAdapter adapter = new MySqlDataAdapter(query, conn);
+                    DataTable dt = new DataTable();
+                    adapter.Fill(dt);
+                    dataGridView2.DataSource = dt;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal menampilkan log pengambilan: " + ex.Message);
+            }
+        }
+
         private void btnTambah_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtID.Text) ||
@@ -77,9 +113,9 @@ namespace crudaplikasi
                 return;
             }
 
-            if (!decimal.TryParse(txtKuantitas.Text, out decimal harga))
+            if (!decimal.TryParse(txtKuantitas.Text, out decimal qty))
             {
-                MessageBox.Show("Harga tidak valid.");
+                MessageBox.Show("Jumlah tidak valid.");
                 return;
             }
 
@@ -92,16 +128,17 @@ namespace crudaplikasi
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@id", txtID.Text);
                     cmd.Parameters.AddWithValue("@nama", txtNama.Text);
-                    cmd.Parameters.AddWithValue("@kuantitas", harga);
+                    cmd.Parameters.AddWithValue("@kuantitas", qty);
                     cmd.ExecuteNonQuery();
 
-                    SimpanLog("Tambah", txtID.Text, txtNama.Text, harga);
+                    SimpanLog("Tambah", txtID.Text, txtNama.Text, qty);
                 }
 
                 MessageBox.Show("Data berhasil ditambahkan!");
                 TampilkanData();
+                TampilkanLogPengambilan();
                 ResetForm();
-                LoadAutoCompleteNamaBarang(); // refresh autocomplete
+                LoadAutoCompleteNamaBarang();
             }
             catch (Exception ex)
             {
@@ -117,7 +154,7 @@ namespace crudaplikasi
                 return;
             }
 
-            if (!decimal.TryParse(txtKuantitas.Text, out decimal harga))
+            if (!decimal.TryParse(txtKuantitas.Text, out decimal qty))
             {
                 MessageBox.Show("Jumlah tidak valid.");
                 return;
@@ -132,16 +169,17 @@ namespace crudaplikasi
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@id", txtID.Text);
                     cmd.Parameters.AddWithValue("@nama", txtNama.Text);
-                    cmd.Parameters.AddWithValue("@kuantitas", harga);
+                    cmd.Parameters.AddWithValue("@kuantitas", qty);
                     cmd.ExecuteNonQuery();
 
-                    SimpanLog("Ubah", txtID.Text, txtNama.Text, harga);
+                    SimpanLog("Ubah", txtID.Text, txtNama.Text, qty);
                 }
 
                 MessageBox.Show("Data berhasil diubah!");
                 TampilkanData();
+                TampilkanLogPengambilan();
                 ResetForm();
-                LoadAutoCompleteNamaBarang(); // refresh autocomplete
+                LoadAutoCompleteNamaBarang();
             }
             catch (Exception ex)
             {
@@ -157,30 +195,22 @@ namespace crudaplikasi
                 return;
             }
 
-            var konfirmasi = MessageBox.Show("Yakin ingin menghapus data ini?", "Konfirmasi", MessageBoxButtons.YesNo);
-            if (konfirmasi != DialogResult.Yes) return;
-
             try
             {
                 using (MySqlConnection conn = Koneksi.GetConnection())
                 {
                     conn.Open();
-
-                    string namaProduk = txtNama.Text;
-                    decimal.TryParse(txtKuantitas.Text, out decimal qty);
-
                     string query = "DELETE FROM produk WHERE id=@id";
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@id", txtID.Text);
                     cmd.ExecuteNonQuery();
-
-                    SimpanLog("Hapus", txtID.Text, namaProduk, qty);
                 }
 
                 MessageBox.Show("Data berhasil dihapus!");
                 TampilkanData();
+                TampilkanLogPengambilan();
                 ResetForm();
-                LoadAutoCompleteNamaBarang(); // refresh autocomplete
+                LoadAutoCompleteNamaBarang();
             }
             catch (Exception ex)
             {
@@ -188,27 +218,67 @@ namespace crudaplikasi
             }
         }
 
-        private void btnReset_Click(object sender, EventArgs e)
+        private void btnAmbil_Click(object sender, EventArgs e)
         {
-            ResetForm();
-        }
-
-        private void ResetForm()
-        {
-            txtID.Clear();
-            txtNama.Clear();
-            txtKuantitas.Clear();
-            dataGridView1.ClearSelection();
-        }
-
-        private void dataGridView1_SelectionChanged(object sender, EventArgs e)
-        {
-            if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
+            if (string.IsNullOrWhiteSpace(txtNamaBarang.Text) ||
+                string.IsNullOrWhiteSpace(txtPengambil.Text) ||
+                !decimal.TryParse(txtJumlah.Text, out decimal jumlahAmbil))
             {
-                var row = dataGridView1.CurrentRow;
-                txtID.Text = row.Cells["id"].Value?.ToString();
-                txtNama.Text = row.Cells["nama"].Value?.ToString();
-                txtKuantitas.Text = row.Cells["kuantitas"].Value?.ToString();
+                MessageBox.Show("Isi semua kolom pengambilan.");
+                return;
+            }
+
+            try
+            {
+                using (MySqlConnection conn = Koneksi.GetConnection())
+                {
+                    conn.Open();
+                    string queryCek = "SELECT id, kuantitas FROM produk WHERE nama = @nama";
+                    MySqlCommand cmdCek = new MySqlCommand(queryCek, conn);
+                    cmdCek.Parameters.AddWithValue("@nama", txtNamaBarang.Text);
+                    var reader = cmdCek.ExecuteReader();
+
+                    if (!reader.Read())
+                    {
+                        MessageBox.Show("Produk tidak ditemukan.");
+                        return;
+                    }
+
+                    string idProduk = reader["id"].ToString();
+                    decimal stokSaatIni = Convert.ToDecimal(reader["kuantitas"]);
+                    reader.Close();
+
+                    if (stokSaatIni < jumlahAmbil)
+                    {
+                        MessageBox.Show("Stok tidak mencukupi.");
+                        return;
+                    }
+
+                    string queryUpdate = "UPDATE produk SET kuantitas = kuantitas - @jumlahAmbil WHERE nama = @nama";
+                    MySqlCommand cmdUpdate = new MySqlCommand(queryUpdate, conn);
+                    cmdUpdate.Parameters.AddWithValue("@jumlahAmbil", jumlahAmbil);
+                    cmdUpdate.Parameters.AddWithValue("@nama", txtNamaBarang.Text);
+                    cmdUpdate.ExecuteNonQuery();
+
+                    string queryInsert = "INSERT INTO pengambilan (id_produk, pengambil, jumlah, tanggal_ambil) VALUES (@id, @pengambil, @jumlah, @waktu)";
+                    MySqlCommand cmdInsert = new MySqlCommand(queryInsert, conn);
+                    cmdInsert.Parameters.AddWithValue("@id", idProduk);
+                    cmdInsert.Parameters.AddWithValue("@pengambil", txtPengambil.Text);
+                    cmdInsert.Parameters.AddWithValue("@jumlah", jumlahAmbil);
+                    cmdInsert.Parameters.AddWithValue("@waktu", DateTime.Now);
+                    cmdInsert.ExecuteNonQuery();
+
+                    SimpanLog("Ambil", idProduk, txtNamaBarang.Text, jumlahAmbil);
+                }
+
+                MessageBox.Show("Barang berhasil diambil dan dicatat.");
+                TampilkanData();
+                TampilkanLogPengambilan();
+                ResetForm();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal mengambil barang: " + ex.Message);
             }
         }
 
@@ -234,9 +304,35 @@ namespace crudaplikasi
             }
         }
 
+        private void btnReset_Click(object sender, EventArgs e)
+        {
+            ResetForm();
+        }
+
+        private void ResetForm()
+        {
+            txtID.Clear();
+            txtNama.Clear();
+            txtKuantitas.Clear();
+            txtNamaBarang.Clear();
+            txtPengambil.Clear();
+            txtJumlah.Clear();
+            dataGridView1.ClearSelection();
+        }
+
+        private void dataGridView1_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
+            {
+                var row = dataGridView1.CurrentRow;
+                txtID.Text = row.Cells["id"].Value?.ToString();
+                txtNama.Text = row.Cells["nama"].Value?.ToString();
+                txtKuantitas.Text = row.Cells["kuantitas"].Value?.ToString();
+            }
+        }
+
         private void label4_Click(object sender, EventArgs e)
         {
-
         }
     }
 }
