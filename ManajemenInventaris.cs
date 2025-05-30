@@ -8,12 +8,15 @@ namespace crudaplikasi
     public partial class ManajemenInventaris : Form
     {
         private AutoCompleteStringCollection autoCollection = new AutoCompleteStringCollection();
+        private TextBox txtID = new TextBox();
 
         public ManajemenInventaris()
         {
             InitializeComponent();
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             this.Load += ManajemenInventaris_Load;
+            txtID.Visible = false;
+            this.Controls.Add(txtID);
         }
 
         private void ManajemenInventaris_Load(object sender, EventArgs e)
@@ -82,15 +85,10 @@ namespace crudaplikasi
                 using (MySqlConnection conn = Koneksi.GetConnection())
                 {
                     conn.Open();
-                    string query = @"SELECT 
-                        p.id_pengambilan,
-                        pr.nama AS nama_barang,
-                        p.pengambil,
-                        p.jumlah,
-                        p.tanggal_ambil
-                    FROM pengambilan p
-                    JOIN produk pr ON p.id_produk = pr.id
-                    ORDER BY p.tanggal_ambil DESC";
+                    string query = @"SELECT p.id_pengambilan, pr.nama AS nama_produk, p.pengambil, p.jumlah, p.tanggal_ambil
+                                     FROM pengambilan p
+                                     JOIN produk pr ON p.id_produk = pr.id
+                                     ORDER BY p.tanggal_ambil DESC";
                     MySqlDataAdapter adapter = new MySqlDataAdapter(query, conn);
                     DataTable dt = new DataTable();
                     adapter.Fill(dt);
@@ -105,9 +103,9 @@ namespace crudaplikasi
 
         private void btnTambah_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtID.Text) ||
-                string.IsNullOrWhiteSpace(txtNama.Text) ||
-                string.IsNullOrWhiteSpace(txtKuantitas.Text))
+            if (string.IsNullOrWhiteSpace(txtNama.Text) ||
+                string.IsNullOrWhiteSpace(txtKuantitas.Text) ||
+                string.IsNullOrWhiteSpace(txtPemasok.Text))
             {
                 MessageBox.Show("Semua kolom wajib diisi.");
                 return;
@@ -124,14 +122,15 @@ namespace crudaplikasi
                 using (MySqlConnection conn = Koneksi.GetConnection())
                 {
                     conn.Open();
-                    string query = "INSERT INTO produk (id, nama, kuantitas) VALUES (@id, @nama, @kuantitas)";
+                    string query = "INSERT INTO produk (nama, kuantitas, pemasok) VALUES (@nama, @kuantitas, @pemasok)";
                     MySqlCommand cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@id", txtID.Text);
                     cmd.Parameters.AddWithValue("@nama", txtNama.Text);
                     cmd.Parameters.AddWithValue("@kuantitas", qty);
+                    cmd.Parameters.AddWithValue("@pemasok", txtPemasok.Text);
                     cmd.ExecuteNonQuery();
 
-                    SimpanLog("Tambah", txtID.Text, txtNama.Text, qty);
+                    long insertedId = cmd.LastInsertedId;
+                    SimpanLog("Tambah", insertedId.ToString(), txtNama.Text, qty);
                 }
 
                 MessageBox.Show("Data berhasil ditambahkan!");
@@ -165,11 +164,12 @@ namespace crudaplikasi
                 using (MySqlConnection conn = Koneksi.GetConnection())
                 {
                     conn.Open();
-                    string query = "UPDATE produk SET nama=@nama, kuantitas=@kuantitas WHERE id=@id";
+                    string query = "UPDATE produk SET nama=@nama, kuantitas=@kuantitas, pemasok=@pemasok WHERE id=@id";
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@id", txtID.Text);
                     cmd.Parameters.AddWithValue("@nama", txtNama.Text);
                     cmd.Parameters.AddWithValue("@kuantitas", qty);
+                    cmd.Parameters.AddWithValue("@pemasok", txtPemasok.Text);
                     cmd.ExecuteNonQuery();
 
                     SimpanLog("Ubah", txtID.Text, txtNama.Text, qty);
@@ -260,11 +260,11 @@ namespace crudaplikasi
                     cmdUpdate.Parameters.AddWithValue("@nama", txtNamaBarang.Text);
                     cmdUpdate.ExecuteNonQuery();
 
-                    string queryInsert = "INSERT INTO pengambilan (id_produk, pengambil, jumlah, tanggal_ambil) VALUES (@id, @pengambil, @jumlah, @waktu)";
+                    string queryInsert = "INSERT INTO pengambilan (id_produk, pengambil, jumlah, tanggal_ambil) VALUES (@id, @pengambil, @qty, @waktu)";
                     MySqlCommand cmdInsert = new MySqlCommand(queryInsert, conn);
                     cmdInsert.Parameters.AddWithValue("@id", idProduk);
+                    cmdInsert.Parameters.AddWithValue("@qty", jumlahAmbil);
                     cmdInsert.Parameters.AddWithValue("@pengambil", txtPengambil.Text);
-                    cmdInsert.Parameters.AddWithValue("@jumlah", jumlahAmbil);
                     cmdInsert.Parameters.AddWithValue("@waktu", DateTime.Now);
                     cmdInsert.ExecuteNonQuery();
 
@@ -312,6 +312,7 @@ namespace crudaplikasi
         private void ResetForm()
         {
             txtID.Clear();
+            txtPemasok.Clear();
             txtNama.Clear();
             txtKuantitas.Clear();
             txtNamaBarang.Clear();
@@ -328,6 +329,7 @@ namespace crudaplikasi
                 txtID.Text = row.Cells["id"].Value?.ToString();
                 txtNama.Text = row.Cells["nama"].Value?.ToString();
                 txtKuantitas.Text = row.Cells["kuantitas"].Value?.ToString();
+                txtPemasok.Text = row.Cells["pemasok"].Value?.ToString();
             }
         }
 
