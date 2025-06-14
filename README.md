@@ -9,7 +9,8 @@ Aplikasi ini mendukung fitur CRUD (Create, Read, Update, Delete) terhadap data p
 - Lihat daftar produk
 - Edit data produk
 - Hapus produk
-- Dashboard ringkasan (opsional)
+- Dashboard
+- Dark/Light
 
 ## 🛠 Teknologi yang Digunakan
 - C# (WinForms)
