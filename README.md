@@ -1,4 +1,4 @@
-# 🛒 Aplikasi Manajemen Inventaris PT. Jenggala Infraco
+# 🛒 Aplikasi Manajemen Inventaris PT. Jenggala Lintas Nusantara
 
 Aplikasi desktop sederhana berbasis WinForms yang digunakan untuk mengelola data perusahaan telekomunikasi.  
 Aplikasi ini mendukung fitur CRUD (Create, Read, Update, Delete) terhadap data produk seperti nama, kategori dan stok.
@@ -9,7 +9,8 @@ Aplikasi ini mendukung fitur CRUD (Create, Read, Update, Delete) terhadap data p
 - Lihat daftar produk
 - Edit data produk
 - Hapus produk
-- Dashboard ringkasan (opsional)
+- Dashboard
+- Dark/Light
 
 ## 🛠 Teknologi yang Digunakan
 - C# (WinForms)
